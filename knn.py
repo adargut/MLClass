@@ -18,15 +18,6 @@ test = data[idx[10000:], :].astype(int)
 test_labels = labels[idx[10000:]]
 
 
-def preprocess_data(train_data, train_labels):
-    """Preprocess neighbors for every image in train data"""
-    processed_data = dict()
-    for image in train_data:
-        neighbors = sorted(list(zip(train_labels, train_data)), key=lambda x: distance.euclidean(x[1], image))
-        processed_data[image] = neighbors
-    return processed_data
-
-
 def predict(train_data, train_labels, query, k):
     """Classify query image using K nearest neighbors from train data"""
     k_neighbors = sorted(list(zip(train_labels, train_data)), key=lambda x: distance.euclidean(x[1], query))[:k]
@@ -102,14 +93,13 @@ def main():
     # Accuracy as a function of n
     left, right = 100, 5000
     results = []
-    for i in tqdm(range(left, right+1, 500)):
+    for i in tqdm(range(left, right+1, 100)):
         predictions = make_predictions(test_data=test[:N],
                                        train_sample_labels=train_labels[:i+1],
                                        train_sample_data=train[:i+1],
                                        K=1)
         accuracy = evaluate_classifier(predictions=predictions, true_labels=test_labels[:N])
-        results.append((left, accuracy,))
-        left += 100
+        results.append((i, accuracy,))
 
     # Plot the results
     plt.title('Accuracy as a function of n')
