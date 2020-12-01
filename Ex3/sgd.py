@@ -8,6 +8,7 @@ import numpy as np
 import numpy.random
 from sklearn.datasets import fetch_openml
 import sklearn.preprocessing
+from matplotlib import pyplot as plt
 
 """
 Assignment 3 question 2 skeleton.
@@ -78,8 +79,13 @@ def SGD_ce(data, labels, eta_0, T):
     """
     Implements multi-class cross entropy loss using SGD.
     """
-    # TODO: Implement me
-    pass
+    N = len(data[0])
+    classifiers = _init_classifiers(N)
+
+    for i in range(1, T + 1):
+        classifiers = _SGD_ce_step(eta_0, classifiers, train_images=data, train_labels=labels)
+
+    return classifiers
 
 
 #################################
@@ -106,6 +112,16 @@ def _SGD_step(eta_0, prev_w, C, t, train_images, train_labels):
     return (1 - eta) * prev_w
 
 
+def _SGD_ce_step(eta_0, classifiers, train_images, train_labels):
+    i = int(np.random.uniform(low=0, high=len(train_images)))
+    gradients = ce_gradient(classifiers=classifiers, sample=train_images[i], label=int(train_labels[i]))
+
+    for i in range(len(classifiers)):
+        classifiers[i] -= (gradients[i] * eta_0)
+
+    return classifiers
+
+
 def _init_classifier(N):
     """
     Initializes the classifier
@@ -129,8 +145,7 @@ def _SGD(C, T, train_images, train_labels, validation_images, validation_labels,
     accuracy = _measure_classifier(validation_images=validation_images,
                                    validation_labels=validation_labels,
                                    classifier=w)
-    print('Accuracy achieved by classifier', accuracy)
-    return accuracy
+    return accuracy, w
 
 
 def _classify(image, classifier):
@@ -151,33 +166,125 @@ def _measure_classifier(validation_images, validation_labels, classifier):
     return correct_predictions / len(validation_labels)
 
 
-def main():
-    train_data, train_labels, validation_data, validation_labels, test_data, test_labels = helper_hinge()
-    results = {}
+def _init_classifiers(N):
+    return np.ones(shape=(10, N))
 
+
+def softmax(classifiers, sample):
+    nominators = [np.dot(classifier, sample) for classifier in classifiers]
+    nominators = nominators - np.max(nominators)  # prevent overflow
+    nominators = np.exp(nominators)
+
+    return nominators / np.sum(nominators)
+
+
+def ce_gradient(classifiers, sample, label):
+    _softmax = softmax(classifiers=classifiers, sample=sample)
+    _softmax[label] -= 1
+
+    return [p * sample for p in _softmax]
+
+
+def measure_ce_accuracy(classifiers, validation_data, validation_labels):
+    correct_predictions = 0
+
+    for image, label in zip(validation_data, validation_labels):
+        nominators = [np.dot(classifier, image) for classifier in classifiers]
+        prediction = np.argmax(nominators)
+
+        if prediction == int(label):
+            correct_predictions += 1
+
+    return correct_predictions / len(validation_data)
+
+
+def main():
+    # train_data, train_labels, validation_data, validation_labels, test_data, test_labels = helper_hinge()
+
+    # # Find optimal eta
+    # eta_results = {}
+    #
+    # for _ in range(10):
+    #     for i in range(-5, 6):
+    #         eta_0 = 10 ** i
+    #         if eta_0 not in eta_results:
+    #             eta_results[eta_0] = []
+    #         accuracy, _ = _SGD(C=1,
+    #                            T=1000,
+    #                            train_images=train_data,
+    #                            train_labels=train_labels,
+    #                            validation_images=validation_data,
+    #                            validation_labels=validation_labels,
+    #                            eta_0=eta_0)
+    #         eta_results[eta_0].append(accuracy)
+    #
+    # optimal_eta = None
+    # optimal_accuracy = 0
+    # for eta_0 in eta_results.keys():
+    #     average_accuracy = np.average(eta_results[eta_0])
+    #     print('for eta', eta_0, 'got avg accuracy', average_accuracy)
+    #     if average_accuracy > optimal_accuracy:
+    #         optimal_eta = eta_0
+    #         optimal_accuracy = average_accuracy
+    #
+    # print('The optimal eta_0 we got is', optimal_eta)
+    #
+    # # Find optimal C value given optimal eta value
+    # C_results = {}
+    #
+    # for _ in range(10):
+    #     for i in range(-5, 6):
+    #         C = 10 ** i
+    #         if C not in C_results:
+    #             C_results[C] = []
+    #         accuracy, _ = _SGD(C=C,
+    #                            T=1000,
+    #                            train_images=train_data,
+    #                            train_labels=train_labels,
+    #                            validation_images=validation_data,
+    #                            validation_labels=validation_labels,
+    #                            eta_0=optimal_eta)
+    #         C_results[C].append(accuracy)
+    #
+    # optimal_C = None
+    # optimal_accuracy = 0
+    # for C in C_results.keys():
+    #     average_accuracy = np.average(C_results[C])
+    #     if average_accuracy > optimal_accuracy:
+    #         optimal_C = C
+    #         optimal_accuracy = average_accuracy
+    #
+    # print('The optimal C we got is', optimal_C, 'with accuracy', optimal_accuracy)
+    #
+    # # Train classifier on optimal T and eta_0
+    # T = 20000
+    # accuracy, optimal_classifier = _SGD(C=optimal_C,
+    #                                     T=T,
+    #                                     train_images=train_data,
+    #                                     train_labels=train_labels,
+    #                                     validation_images=validation_data,
+    #                                     validation_labels=validation_labels,
+    #                                     eta_0=optimal_eta)
+    #
+    # print('The best accuracy achieved given optimal eta_0 and C is', accuracy)
+    # # Draw classifier as image
+    # plt.imshow(np.reshape(optimal_classifier, newshape=(28, 28,)), interpolation='nearest')
+    # plt.show()
+
+    print('--Time for part 2--')
+    train_data, train_labels, validation_data, validation_labels, test_data, test_labels = helper_ce()
+    eta_results = {}
     for _ in range(10):
         for i in range(-5, 6):
             eta_0 = 10 ** i
-            if eta_0 not in results:
-                results[eta_0] = []
-            print('Trying out eta ', eta_0)
-            accuracy = _SGD(C=1,
-                            T=1000,
-                            train_images=train_data,
-                            train_labels=train_labels,
-                            validation_images=validation_data,
-                            validation_labels=validation_labels,
-                            eta_0=eta_0)
-            results[eta_0].append(accuracy)
+            if eta_0 not in eta_results:
+                eta_results[eta_0] = []
+            T = 1000
+            classifiers = SGD_ce(data=train_data, labels=train_labels, eta_0=eta_0, T=T)
+            accuracy = measure_ce_accuracy(classifiers=classifiers, validation_data=validation_data, validation_labels=validation_labels)
+            eta_results[eta_0].append(accuracy)
 
-    optimal_eta = None
-    optimal_accuracy = 0
-    for eta_0 in results.keys():
-        average_accuracy = np.average(results[eta_0])
-        if average_accuracy > optimal_accuracy:
-            optimal_eta = eta_0
-
-    print('The optimal eta_0 we got is', optimal_eta)
+            print('for eta', eta_0, 'got accuracy', accuracy)
 
 
 if __name__ == '__main__':
