@@ -51,16 +51,25 @@ def train_three_kernels(X_train, y_train, X_val, y_val):
     Returns: np.ndarray of shape (3,2) :
                 A two dimensional array of size 3 that contains the number of support vectors for each class(2) in the three kernels.
     """
-    linearSVM = svm.SVC(kernel='linear')
+    linearSVM = svm.SVC(kernel='linear', C=1000)
     linearSVM.fit(X=X_train, y=y_train)
+    num_support_vectors_lin = len(linearSVM.support_vectors_)
+    create_plot(X_train, y_train, linearSVM)
+    plt.show()
 
-    quadraticSVM = svm.SVC(kernel='poly')
+    quadraticSVM = svm.SVC(kernel='poly', C=1000, degree=2)
     quadraticSVM.fit(X=X_train, y=y_train)
+    num_support_vectors_quad = len(quadraticSVM.support_vectors_)
+    create_plot(X_train, y_train, quadraticSVM)
+    # plt.show()
 
-    rbfSVM = svm.SVC()
+    rbfSVM = svm.SVC(kernel='rbf', C=1000)
     rbfSVM.fit(X=X_train, y=y_train)
+    num_support_vectors_rbf = len(rbfSVM.support_vectors_)
+    create_plot(X_train, y_train, rbfSVM)
+    # plt.show()
 
-    return np.ndarray([linearSVM.n_support_, quadraticSVM.n_support_, rbfSVM.n_support_])
+    return np.asarray([num_support_vectors_lin, num_support_vectors_quad, num_support_vectors_rbf])
 
 
 def linear_accuracy_per_C(X_train, y_train, X_val, y_val):
@@ -68,7 +77,33 @@ def linear_accuracy_per_C(X_train, y_train, X_val, y_val):
         Returns: np.ndarray of shape (11,) :
                     An array that contains the accuracy of the resulting model on the VALIDATION set.
     """
-    # TODO: add your code here
+    lowest_C_exp = -5
+    highest_C_exp = 5
+    best_C = None
+    best_score = 0
+    scores = []
+
+    for i in range(lowest_C_exp, highest_C_exp + 1):
+        C = 10 ** i
+        linearSVM = svm.SVC(C=C, kernel='linear')
+        linearSVM.fit(X_train, y_train)
+        accuracy = linearSVM.score(X_val, y_val)
+
+        if accuracy > best_score:
+            best_score = accuracy
+            best_C = C
+
+        scores.append((i, accuracy,))
+        create_plot(X_train, y_train, linearSVM)
+        plt.show()
+
+    plt.plot(*zip(*scores))
+    plt.title('Accuray of linear SVM as a function of C')
+    plt.xlabel('C value (log10 scale)')
+    plt.ylabel('Accuracy')
+    # plt.show()
+
+    return best_C
 
 
 def rbf_accuracy_per_gamma(X_train, y_train, X_val, y_val):
@@ -76,4 +111,47 @@ def rbf_accuracy_per_gamma(X_train, y_train, X_val, y_val):
         Returns: np.ndarray of shape (11,) :
                     An array that contains the accuracy of the resulting model on the VALIDATION set.
     """
-    # TODO: add your code here
+    lowest_gamma_exp = -5
+    highest_gamma_exp = 5
+    C = 10
+    best_gamma = None
+    best_score = 0
+    scores = []
+
+    for i in range(lowest_gamma_exp, highest_gamma_exp + 1):
+        gamma = 10 ** i
+        rbfSVM = svm.SVC(gamma=gamma, C=C)
+        rbfSVM.fit(X=X_train, y=y_train)
+        accuracy = rbfSVM.score(X_val, y_val)
+
+        if accuracy > best_score:
+            best_gamma = gamma
+            best_score = accuracy
+
+        scores.append((i, accuracy,))
+        create_plot(X_train, y_train, rbfSVM)
+        plt.show()
+
+    plt.title('Accuray of rbf SVM as a function of gamma')
+    plt.xlabel('gamma value (log10 scale)')
+    plt.ylabel('Accuracy')
+    plt.plot(*zip(*scores))
+    # plt.show()
+
+    return best_gamma
+
+
+def main():
+    X, y, x_val, y_val = get_points()
+    n_support_array = train_three_kernels(X, y, None, None)
+    print('the number of support vectors:', n_support_array)
+
+    best_C = linear_accuracy_per_C(X, y, x_val, y_val)
+    print('the best C found is:', best_C)
+
+    best_gamma = rbf_accuracy_per_gamma(X, y, x_val, y_val)
+    print('the best gamma found is:', best_gamma)
+
+
+if __name__ == '__main__':
+    main()
