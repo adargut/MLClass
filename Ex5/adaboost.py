@@ -73,8 +73,10 @@ def plot_test_train_error(test_data, test_labels, train_data, train_labels, alph
     plt.plot(X, Y_test, label='Test Error')
     plt.plot(X, Y_train, label='Train Error')
     plt.legend(loc='best')
-    plt.title('Test and train error by ensemble of weak learners as adaboost progresses')
-    plt.show()
+    plt.xlabel('Iteration')
+    plt.ylabel('Error Probability')
+    plt.title('Error by weak learners as adaboost progresses')
+    # plt.show()
 
 
 def plot_test_train_average_exp_loss(test_data, test_labels, train_data, train_labels, alpha_vals, weak_learners):
@@ -94,18 +96,20 @@ def plot_test_train_average_exp_loss(test_data, test_labels, train_data, train_l
     Y_train = []
 
     for i in range(1, num_iters + 1):
-        partial_error_test = calc_exp_loss(data=test_data, labels=test_labels, weak_learners=weak_learners,
-                                           alpha_vals=alpha_vals)
+        partial_error_test = calc_exp_loss(data=test_data, labels=test_labels, weak_learners=weak_learners[:i],
+                                           alpha_vals=alpha_vals[:i])
         Y_test.append(partial_error_test)
-        partial_error_train = calc_exp_loss(data=train_data, labels=train_labels, weak_learners=weak_learners,
-                                            alpha_vals=alpha_vals)
+        partial_error_train = calc_exp_loss(data=train_data, labels=train_labels, weak_learners=weak_learners[:i],
+                                            alpha_vals=alpha_vals[:i])
         Y_train.append(partial_error_train)
 
     plt.plot(X, Y_test, label='Test Exponential Loss')
     plt.plot(X, Y_train, label='Train Exponential Loss')
     plt.legend(loc='best')
+    plt.xlabel('Iteration')
+    plt.ylabel('Exponential Loss')
     plt.title('Test and train exponential loss by ensemble of weak learners as adaboost progresses')
-    plt.show()
+    # plt.show()
 
 
 def calc_error(data, labels, learners, alpha_vals):
@@ -171,15 +175,13 @@ def get_theta_vals(X):
     :param X: sample data
     :return: the relevant thetas we inspect
     """
-    min_theta = 2 ** 31
-    max_theta = (-2) ** 31
+    thetas = set()
 
-    for review in X:
+    for i, review in enumerate(X):
         for word_count in review:
-            min_theta = min(min_theta, word_count)
-            max_theta = max(max_theta, word_count)
+            thetas.add((i, word_count,))
 
-    return range(int(min_theta), int(max_theta) + 1)
+    return list(thetas)
 
 
 def weak_learner_predict(X, i, h):
@@ -209,17 +211,16 @@ def select_optimal_WL(weights, X, Y, theta_vals):
     """
     optimal_wl = None
     min_error = 2 ** 31
-    review_len = len(X[0])
 
-    iter = tqdm(range(review_len), desc='optimal wl selection')
-    for word_idx in iter:
-        for theta in theta_vals:
-            for flip in [True, False]:
-                h = (word_idx, theta, flip,)
-                WL_error = compute_weighted_error(h=h, weights=weights, X=X, Y=Y)
-                if WL_error < min_error:
-                    min_error = WL_error
-                    optimal_wl = word_idx, theta, flip
+    iter = tqdm(range(len(theta_vals)), desc='optimal wl selection')
+    for i in iter:
+        word_idx, theta = theta_vals[i]
+        for flip in [True, False]:
+            h = (word_idx, theta, flip,)
+            WL_error = compute_weighted_error(h=h, weights=weights, X=X, Y=Y)
+            if WL_error < min_error:
+                min_error = WL_error
+                optimal_wl = word_idx, theta, flip
 
     return optimal_wl
 
@@ -282,7 +283,6 @@ def update_weights(weights, X, Y, h, alpha):
     :param alpha: optimal weak learner's weight
     :return: updated weights
     """
-    # (X, Y, h, alpha):
     normalizing_factor = compute_normalizing_factor(X, Y, h, alpha, weights)
     updated_weights = []
     num_reviews = len(X)
@@ -311,14 +311,12 @@ def main():
                           alpha_vals=alpha_vals, weak_learners=weak_learners)
 
     # section b
-    T = 10
     first_10_weak_learners, first_10_alpha_vals = weak_learners[:10], alpha_vals[:10]
     print('Learners picked by adaboost in section b', first_10_weak_learners)
     words_predicted_by = []
-    for _, idx, _ in weak_learners:
+    for idx, _, _ in weak_learners:
         word = vocab[idx]
         words_predicted_by.append(word)
-
     print('The first 10 weak learners predicted by the words', words_predicted_by)
 
     # section c
